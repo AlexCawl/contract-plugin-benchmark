@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -9,7 +9,11 @@ android {
     buildToolsVersion = "36.0.0"
 
     defaultConfig {
+        applicationId = "com.alexcawl.contract.benchmark.app"
         minSdk = 23
+        targetSdk = 36
+        versionCode = 1
+        versionName = "1.0"
     }
 
     buildFeatures {
@@ -35,8 +39,7 @@ kotlin {
 }
 
 dependencies {
-    api(project(":library"))
+    implementation(project(":library"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.compose.foundation)
 }

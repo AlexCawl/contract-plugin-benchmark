@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.app
+package com.alexcawl.contract.benchmark.test
 
 import androidx.activity.ComponentActivity
 

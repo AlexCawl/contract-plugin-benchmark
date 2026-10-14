@@ -1,108 +1,149 @@
 # Contract Plugin Benchmark
 
-A standalone Android Microbenchmark project for comparing approaches to implementing
-Appearance objects and using them in Compose. It does not apply or depend on a contract
-compiler plugin, annotation library, local checkout, or published contract artifacts.
-The standard Kotlin Compose compiler is enabled for Compose code.
+A standalone Android project for comparing the performance and usability of different
+contract implementations in Compose. Every version has exactly two primary contracts:
+Size for geometry and Appearance for drawing style. All versions resolve their contracts
+into explicit values for one shared Material3 Card renderer.
 
-The project contains a shared ActionCard renderer and a manually implemented V1 contract
-API based on the Taiga UI approach. Comparative performance workloads are a separate step.
-The infrastructure benchmark only verifies that the runner and reporting work;
-its object allocation results do not describe contract performance.
+The current implementation contains V1 and a runnable demonstration. Comparative
+performance workloads are a separate step. The infrastructure allocation benchmark only
+checks the runner and reporting; it does not measure contract performance.
+
+The project does not apply or depend on a contract compiler plugin, its annotations, local
+checkouts, or published artifacts. The standard Kotlin Compose compiler is enabled.
 
 ## Modules
 
-- `library`: Android library containing shared state in `library.common` and V1 Size/Appearance
-  contracts, factories, copying, and reflective equality in `library.v1`.
-- `app`: Android library containing the `BenchmarkActivity` test host, an interactive
-  demonstration scene, the shared renderer in `app.common`, and its V1 composable wrapper
-  in `app.v1`. It exports `library` through an `api` dependency.
-- `benchmark`: Android library containing AndroidX Microbenchmark and Compose instrumentation
-  tests. It depends on `app` and standard testing libraries, and accesses contracts through
-  the API dependency exported by `app`.
+- `library`: shared Card renderer and state in `library.common`, manually implemented
+  Taiga-style contracts and wrappers in `library.v1`, and the interactive scene in
+  `library.demo`. It exports Material3 and the current Compose BOM.
+- `app`: Android application with a launcher MainActivity hosting the scene in MaterialTheme.
+- `benchmark`: Android library with its own BenchmarkActivity, Compose correctness tests,
+  and AndroidX Microbenchmark infrastructure.
 
-All three modules use `com.android.library`; `app` is not a standalone launcher application.
-Tests use the release variant, debug signing, no minification, and the benchmark plugin's
-default AOT compilation.
+Both app and benchmark depend directly on library. The common renderer has no dependency
+on V1; a versioned wrapper only observes shared interaction state, resolves its contracts,
+and forwards the values and content to that renderer.
 
-## ActionCard and V1
+## Card contracts
 
-`app.common.ActionCard` takes every visual parameter explicitly and has no V1 contract dependency.
-It renders a title, optional description and badge, and optional leading/trailing slots.
-Slots receive their resolved color. `library.common.ActionCardState` carries `enabled` and `selected`;
-disabled cards do not invoke their click handler. Titles and badges use one line, descriptions
-use up to two, and overflowing text is ellipsized. Null optional elements reserve no space.
+All contract methods are composable. Some accept immutable CardState (`enabled`, `pressed`);
+others have no input parameters, so both signatures can be compared across versions.
 
-`app.v1.ActionCard` resolves two stable contracts from `library.v1` and delegates to the common renderer:
+| Contract | Method | Responsibility |
+| --- | --- | --- |
+| Size | `shape(state): Shape` | Shape and corner rounding |
+| Size | `contentPadding(state): PaddingValues` | Internal padding |
+| Size | `spacing(): Dp` | Vertical spacing between content elements |
+| Appearance | `colors(state): CardColors` | Container and inherited content colors |
+| Appearance | `border(state): BorderStroke?` | Border |
+| Appearance | `elevation(): CardElevation` | M3 elevation, including interaction feedback |
 
-- `ActionCardSize`: minimum height, padding, spacing, slot sizes, and badge padding.
-- `ActionCardAppearance`: shapes, background brushes, border, slot colors, and all three text styles.
+Defaults use the current MaterialTheme through CardDefaults, with no border, zero internal
+padding, and zero spacing. Each version must map the same inputs to the same renderer.
+The renderer calls M3 Card and hosts arbitrary content in a shared Column with the resolved
+padding and spacing; its ColumnScope is passed to the caller.
 
-The package roots are `com.alexcawl.contract.benchmark.app` and
-`com.alexcawl.contract.benchmark.library`. Dependency direction is `benchmark` → `app` → `library`;
-the shared state resides in `library` so contracts can be compiled independently of the UI.
+`library.v1.Card` has non-clickable and clickable overloads. They retain M3's modifier,
+content, and (for the clickable overload) onClick, enabled, and interactionSource parameters,
+replacing explicit styling with Size and Appearance. Text, badges, icons, and their typography
+belong to caller-supplied content.
 
-Both contracts expose composable state-dependent methods, a `Default` companion, an inline
-factory with composable receiver lambdas, and `copy`/`rememberCopy` with a `Wrapper.wrapped`
-receiver. Call `wrapped.method(state)` inside an override to access the original; calling
-the overridden method on `this` recurses.
+The clickable wrapper creates a remembered MutableInteractionSource when none is supplied.
+The shared state collector observes the exact source passed to M3. Press, release, and cancel
+update both contracts; disabling the card makes its effective pressed state false and M3
+prevents clicks. Non-clickable cards resolve contracts with enabled=true and pressed=false.
 
-The V1 implementation deliberately retains the supplied `ReflectiveEqualsHashCode`
-algorithm, including comparing all declared captured fields and treating two null reference
-fields in distinct instances as unequal. Equality depends on the anonymous implementation
-class and captures, rather than the values returned by composable methods.
+For example, inside a MaterialTheme composition:
 
-`rememberCopy` uses `remember` without keys: it retains the first receiver and override
-lambdas. Read a captured `State` or `rememberUpdatedState` for changing values, or explicitly
-key the surrounding composition if the copy must be recreated. The demonstration shows
-default, selected/customized, and disabled cards without introducing measured workloads.
-
-## Requirements
-
-- JDK 21 and the included Gradle 9.6.1 wrapper.
-- Android SDK Platform 36 and Build Tools 36.0.0.
-- `ANDROID_HOME` pointing to the SDK, or an ignored `local.properties` containing
-  `sdk.dir=/path/to/android/sdk`.
-- Android device or emulator with API 23 or higher for instrumentation tests.
-
-Versions are centralized in `gradle/libs.versions.toml`: Kotlin 2.4.20, AGP 9.4.1,
-Compose BOM 2026.02.01, AndroidX Benchmark 1.5.0, and Espresso 3.7.0.
-AGP supplies built-in Kotlin support; the root Kotlin JVM plugin declaration selects the
-same Kotlin version for the Android modules without applying a legacy Kotlin Android plugin.
-
-## Build
-
-Build and assemble the test APK without a connected device:
-
-```shell
-./gradlew build :benchmark:assembleReleaseAndroidTest --continue
+```kotlin
+val size = Size.Default.rememberCopy(
+    contentPadding = { state -> PaddingValues(if (state.pressed) 12.dp else 16.dp) },
+    spacing = { 8.dp },
+)
+val appearance = Appearance.Default.rememberCopy(
+    colors = { state ->
+        wrapped.colors(state).copy(
+            containerColor = if (state.pressed) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.secondaryContainer
+            },
+        )
+    },
+)
+Card(onClick = { /* caller-owned action */ }, size = size, appearance = appearance) {
+    Text("Arbitrary content")
+    Text("Geometry and style come from V1")
+}
 ```
 
-## Check correctness and infrastructure
+Import Card, Size, Appearance, and rememberCopy from
+`com.alexcawl.contract.benchmark.library.v1`.
 
-Run the correctness tests and infrastructure benchmark on a device or emulator without
-collecting performance results:
+## V1 semantics
+
+Both contracts provide a Default companion, inline factories with composable receiver
+lambdas, and copy/rememberCopy overrides with a Wrapper.wrapped receiver. Use
+`wrapped.method(...)` to call the original implementation; calling the overridden method
+on this recurses.
+
+rememberCopy deliberately uses remember without keys. It retains the first receiver and
+override captures. Read a captured State or rememberUpdatedState when values must change,
+or key the surrounding composition when a new copy is needed. Composable default methods
+continue to read the current MaterialTheme.
+
+ReflectiveEqualsHashCode retains the original V1 algorithm: it compares every declared
+captured field of anonymous implementations of the same class, including treating two
+null reference fields in distinct instances as unequal. Equality describes implementation
+classes and captures, rather than the values returned by composable methods.
+
+## Requirements and demo
+
+Use JDK 21, the included Gradle wrapper, Android SDK Platform 36, and Build Tools 36.0.0.
+Set ANDROID_HOME or an ignored local.properties containing sdk.dir. Minimum API is 23;
+bytecode targets JVM 17. Versions are centralized in gradle/libs.versions.toml.
+
+Run the app from Android Studio, or install and open its debug build:
+
+```shell
+./gradlew :app:installDebug
+adb shell am start -n com.alexcawl.contract.benchmark.app/.MainActivity
+```
+
+The scene shows a standard non-clickable card, an interactive card with V1 overrides,
+and a disabled card using the same overrides. Holding the interactive card changes padding,
+rounding, background, and border. Clicks update a local counter; the switch disables
+interaction. The scene and its correctness counters are never benchmark workloads.
+
+## Verification and benchmarks
+
+Build the project, demo APK, and release instrumentation APK:
+
+```shell
+./gradlew build :app:assembleDebug :benchmark:assembleReleaseAndroidTest --continue
+```
+
+Run correctness tests and exercise the infrastructure without collecting metrics:
 
 ```shell
 ./gradlew :benchmark:connectedReleaseAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true
 ```
 
-Run only the demonstration scene test:
+Tests cover factory defaults, receiver calls, copying, V1 equality, theme changes,
+content layout and rendering, real press/release/cancel transitions, disabling during
+a press, and demonstration interaction.
 
-```shell
-./gradlew :benchmark:connectedReleaseAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.BenchmarkSceneTest
-```
-
-Run the infrastructure benchmark on a physical device:
+Run the existing infrastructure benchmark on a physical device:
 
 ```shell
 ./gradlew :benchmark:connectedReleaseAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.InfrastructureBenchmark
 ```
 
-Performance measurements require a physical device for meaningful results. Dry-run mode
-checks execution without collecting timing or allocation results. Normal benchmark results
-appear in the test log and JSON reports under
+The benchmark module retains AndroidBenchmarkRunner, release tests signed with the debug key,
+no minification, and the benchmark plugin's default AOT compilation. Do not disable environment
+checks for emulator timing. Dry-run execution on an emulator only checks correctness and
+execution, not performance. Normal benchmark reports appear under
 `benchmark/build/outputs/connected_android_test_additional_output/`.

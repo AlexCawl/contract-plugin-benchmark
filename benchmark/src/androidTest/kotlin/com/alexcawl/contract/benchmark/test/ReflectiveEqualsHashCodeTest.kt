@@ -1,9 +1,13 @@
 package com.alexcawl.contract.benchmark.test
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.alexcawl.contract.benchmark.library.v1.ActionCardAppearance
-import com.alexcawl.contract.benchmark.library.v1.ActionCardSize
+import com.alexcawl.contract.benchmark.library.v1.Appearance
+import com.alexcawl.contract.benchmark.library.v1.Appearance1
+import com.alexcawl.contract.benchmark.library.v1.Size
+import com.alexcawl.contract.benchmark.library.v1.Size1
 import com.alexcawl.contract.benchmark.library.v1.ReflectiveEqualsHashCode
 import com.alexcawl.contract.benchmark.library.v1.copy
 import org.junit.Assert.assertEquals
@@ -45,11 +49,11 @@ class ReflectiveEqualsHashCodeTest {
 
     @Test
     fun factoriesCompareCapturesFromTheSameCallSite() {
-        val first = sizeWithHeight(80)
-        val same = sizeWithHeight(80)
+        val first = sizeWithPadding(8)
+        val same = sizeWithPadding(8)
         assertEquals(first, same)
         assertEquals(first.hashCode(), same.hashCode())
-        assertNotEquals(first, sizeWithHeight(96))
+        assertNotEquals(first, sizeWithPadding(12))
 
         val appearance = appearanceWithAlpha(0.5f)
         val sameAppearance = appearanceWithAlpha(0.5f)
@@ -61,26 +65,26 @@ class ReflectiveEqualsHashCodeTest {
 
     @Test
     fun copiesCompareOriginalAndOverrideCaptures() {
-        val original = sizeWithHeight(80)
+        val original = sizeWithPadding(8)
         val first = sizeCopy(original, 8)
         val same = sizeCopy(original, 8)
         assertEquals(first, same)
         assertEquals(first.hashCode(), same.hashCode())
         assertNotEquals(first, sizeCopy(original, 12))
-        assertNotEquals(first, sizeCopy(sizeWithHeight(96), 8))
+        assertNotEquals(first, sizeCopy(sizeWithPadding(12), 8))
     }
 }
 
-private fun sizeWithHeight(height: Int): ActionCardSize = ActionCardSize(
-    minHeight = { height.dp },
+private fun sizeWithPadding(padding: Int): Size1 = Size(
+    contentPadding = { PaddingValues(padding.dp) },
 )
 
-private fun appearanceWithAlpha(alpha: Float): ActionCardAppearance = ActionCardAppearance(
-    leadingColor = { Color.Red.copy(alpha = alpha) },
+private fun appearanceWithAlpha(alpha: Float): Appearance1 = Appearance(
+    border = { BorderStroke(1.dp, Color.Red.copy(alpha = alpha)) },
 )
 
-private fun sizeCopy(original: ActionCardSize, spacing: Int): ActionCardSize = original.copy(
-    horizontalSpacing = { spacing.dp },
+private fun sizeCopy(original: Size1, spacing: Int): Size1 = original.copy(
+    spacing = { spacing.dp },
 )
 
 private class Fields(
