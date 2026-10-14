@@ -41,6 +41,7 @@ kotlin {
 dependencies {
     androidTestImplementation(project(":app"))
     androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.foundation)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.benchmark.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

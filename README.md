@@ -5,21 +5,57 @@ Appearance objects and using them in Compose. It does not apply or depend on a c
 compiler plugin, annotation library, local checkout, or published contract artifacts.
 The standard Kotlin Compose compiler is enabled for Compose code.
 
-This initial scaffold contains no Appearance implementations or comparative workloads.
-It provides a Compose host, a UI smoke test, and an infrastructure benchmark that allocates
-an object. The infrastructure benchmark only verifies that the runner and reporting work;
-its results do not describe Appearance performance.
+The project contains a shared ActionCard renderer and a manually implemented V1 contract
+API based on the Taiga UI approach. Comparative performance workloads are a separate step.
+The infrastructure benchmark only verifies that the runner and reporting work;
+its object allocation results do not describe contract performance.
 
 ## Modules
 
-- `app`: Android library containing the empty `BenchmarkActivity` test host and a placeholder
-  Compose scene. Future Appearance implementations and shared UI belong here.
+- `library`: Android library containing shared state in `library.common` and V1 Size/Appearance
+  contracts, factories, copying, and reflective equality in `library.v1`.
+- `app`: Android library containing the `BenchmarkActivity` test host, an interactive
+  demonstration scene, the shared renderer in `app.common`, and its V1 composable wrapper
+  in `app.v1`. It exports `library` through an `api` dependency.
 - `benchmark`: Android library containing AndroidX Microbenchmark and Compose instrumentation
-  tests. It depends only on `app` and standard testing libraries.
+  tests. It depends on `app` and standard testing libraries, and accesses contracts through
+  the API dependency exported by `app`.
 
-Both modules use `com.android.library`; `app` is not a standalone launcher application.
+All three modules use `com.android.library`; `app` is not a standalone launcher application.
 Tests use the release variant, debug signing, no minification, and the benchmark plugin's
 default AOT compilation.
+
+## ActionCard and V1
+
+`app.common.ActionCard` takes every visual parameter explicitly and has no V1 contract dependency.
+It renders a title, optional description and badge, and optional leading/trailing slots.
+Slots receive their resolved color. `library.common.ActionCardState` carries `enabled` and `selected`;
+disabled cards do not invoke their click handler. Titles and badges use one line, descriptions
+use up to two, and overflowing text is ellipsized. Null optional elements reserve no space.
+
+`app.v1.ActionCard` resolves two stable contracts from `library.v1` and delegates to the common renderer:
+
+- `ActionCardSize`: minimum height, padding, spacing, slot sizes, and badge padding.
+- `ActionCardAppearance`: shapes, background brushes, border, slot colors, and all three text styles.
+
+The package roots are `com.alexcawl.contract.benchmark.app` and
+`com.alexcawl.contract.benchmark.library`. Dependency direction is `benchmark` → `app` → `library`;
+the shared state resides in `library` so contracts can be compiled independently of the UI.
+
+Both contracts expose composable state-dependent methods, a `Default` companion, an inline
+factory with composable receiver lambdas, and `copy`/`rememberCopy` with a `Wrapper.wrapped`
+receiver. Call `wrapped.method(state)` inside an override to access the original; calling
+the overridden method on `this` recurses.
+
+The V1 implementation deliberately retains the supplied `ReflectiveEqualsHashCode`
+algorithm, including comparing all declared captured fields and treating two null reference
+fields in distinct instances as unequal. Equality depends on the anonymous implementation
+class and captures, rather than the values returned by composable methods.
+
+`rememberCopy` uses `remember` without keys: it retains the first receiver and override
+lambdas. Read a captured `State` or `rememberUpdatedState` for changing values, or explicitly
+key the surrounding composition if the copy must be recreated. The demonstration shows
+default, selected/customized, and disabled cards without introducing measured workloads.
 
 ## Requirements
 
@@ -42,16 +78,17 @@ Build and assemble the test APK without a connected device:
 ./gradlew build :benchmark:assembleReleaseAndroidTest --continue
 ```
 
-## Check the scaffold
+## Check correctness and infrastructure
 
-Run both tests on a device or emulator without collecting performance results:
+Run the correctness tests and infrastructure benchmark on a device or emulator without
+collecting performance results:
 
 ```shell
 ./gradlew :benchmark:connectedReleaseAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true
 ```
 
-Run only the Compose smoke test:
+Run only the demonstration scene test:
 
 ```shell
 ./gradlew :benchmark:connectedReleaseAndroidTest \

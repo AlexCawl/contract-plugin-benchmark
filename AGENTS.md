@@ -3,8 +3,10 @@
 ## Purpose and Boundaries
 
 This independent Android Microbenchmark project will compare approaches to implementing
-Appearance objects and using them in Compose. The initial scaffold intentionally contains
-no Appearance implementations, calendar UI, or LazyColumn workloads.
+Appearance objects and using them in Compose. The shared ActionCard renderer lives in
+`app.common`; its V1 composable wrapper lives in `app.v1`. Manually implemented Taiga-style
+V1 Size and Appearance contracts live in `library.v1`, with shared ActionCardState in
+`library.common`. Comparative performance workloads remain a separate step.
 
 Do not add a contract compiler plugin, its annotations, published artifacts, an included
 build, or a dependency on another checkout unless the user explicitly changes this scope.
@@ -12,12 +14,16 @@ The standard Kotlin Compose compiler is part of the testing infrastructure.
 
 ## Structure
 
-- `app/src/main/`: Compose test host, shared UI, and future implementations under test.
+- `library/src/main/`: shared state and versioned contracts, factories, copying, and equality.
+- `app/src/main/`: Compose test host, shared UI, and composable wrappers under test.
 - `benchmark/src/androidTest/`: Microbenchmarks and Compose correctness tests.
 - `gradle/libs.versions.toml`: dependency and plugin versions.
 
-Both modules use `com.android.library`. Keep infrastructure benchmarks separate from
-correctness tests; the placeholder allocation benchmark is not an Appearance comparison.
+All three modules use `com.android.library`. `app` exports `library` through `api`, so
+`benchmark` accesses both UI and contracts through its `app` dependency. Keep `library`
+independent of `app` and keep the common renderer independent of versioned contracts.
+Keep infrastructure benchmarks separate from correctness tests; the placeholder allocation
+benchmark is not an Appearance comparison.
 
 ## Build and Verification
 
