@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.app.v2
+package com.alexcawl.contract.benchmark.library.v3
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -24,10 +24,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun Card2(
+fun Card3(
     onClick: () -> Unit,
-    size: Size2,
-    appearance: Appearance2,
+    size: Size3,
+    appearance: Appearance3,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
@@ -54,7 +54,7 @@ fun Card2(
 
 /** Filled Card elevation transitions from Material3 1.4.0, matching V1. */
 @Composable
-private fun Appearance2.animatedShadowElevation(
+private fun Appearance3.animatedShadowElevation(
     enabled: Boolean,
     interactionSource: InteractionSource,
 ): Dp {

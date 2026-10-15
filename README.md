@@ -1,25 +1,37 @@
 # Contract Plugin Benchmark
 
-A standalone Android project for comparing the performance and allocations of versioned
-Compose contracts. The library contains V1, V2, and V3, each with Size and Appearance contracts
-and its own Card implementation. Card1, Card2, and Card3 use Surface and Column with equivalent
-default geometry, colors, and interaction feedback.
+An independent Android project measuring V1, V2, and V3 Compose contracts. Each version has
+Size and Appearance contracts and its own Card1/Card2/Card3 implementation. Surface, Column,
+and elevation animation remain separate in those composables.
 
-Comparative performance workloads are a separate step. The infrastructure allocation
-benchmark only checks the runner and reporting; it does not measure contract performance.
+The project does not depend on the contract compiler plugin, its annotations, published
+artifacts, or another checkout. Only the standard Kotlin Compose compiler is enabled.
 
-The project does not apply or depend on a contract compiler plugin, its annotations, local
-checkouts, or published artifacts. The standard Kotlin Compose compiler is enabled.
+## Modules and application
 
-## Modules
+- `library`: contracts in library.v1/v2/v3 and the original Card implementations. Exports Material3.
+- `app`: ActivityV1, ActivityV2, and ActivityV3. Each scene is a private composable in its
+  Activity file, called only by that Activity. V1 is the launcher; start V2/V3 directly.
+- `benchmark`: separate V1ContractBenchmark/V2ContractBenchmark/V3ContractBenchmark and
+  V1ContractHeapDumpTest/V2ContractHeapDumpTest/V3ContractHeapDumpTest classes.
+- `macrobenchmark`: self-instrumenting com.android.test module targeting app's benchmark build.
 
-- `library`: V1, V2, and V3 contracts, factories, presets, and Card composables. It exports
-  Material3 and the current Compose BOM.
-- `app`: launcher application; its previous demonstration still needs migration.
-- `benchmark`: separate BenchmarkActivity, correctness tests, and AndroidX
-  Microbenchmark infrastructure. Legacy UI tests still need migration.
+There are no shared scenes, factory wrappers, input-holder types, or contract correctness tests.
+Scenes and benchmarks call the versioned factories and copy extensions directly, with identical
+tokens and content repeated explicitly. The library contains only contracts and Card renderers.
 
-Both app and benchmark depend directly on library.
+Each Activity hosts 1000 identically sized cards in a LazyColumn. Visible/prefetched items
+remember their own Size and Appearance copies from that Activity's base contracts by base
+and revision. Both copy calls supply every callback. Scrolling away can dispose copies;
+this is not 1000 eagerly retained contracts.
+
+The appearance button alternates the same colors, shape, border, arrangement, and alignment
+in every version. The switch changes enabled and disabled colors. The same interaction source
+feeds Surface and pressed-state semantics. Both palettes use zero elevation for equivalent
+visual behavior; original preset animations remain unchanged in Card1/Card2/Card3.
+
+There is no navigation between benchmark Activities. Macrobenchmark starts its selected
+Activity directly in a fresh process.
 
 ## Contract API
 
@@ -115,7 +127,7 @@ store callbacks directly, and each contract() call constructs a fresh container 
 ordinary reference equality. Copy calls contract() exactly once, merges the stored callback
 references with supplied overrides, and calls the factory. At source level, each copy
 constructs one temporary Contract container and one new Impl, without callback wrappers.
-Actual allocation measurements remain a separate step.
+Actual allocation counts depend on ART and are reported by the Microbenchmark cases below.
 
 All copy arguments are nullable and default to null, meaning preserve the source callback.
 Passing null cannot reset an override to its interface default. Equality and hashing compare
@@ -161,40 +173,141 @@ V1's shadowElevation(enabled, interactionSource) and its animation remain unchan
 
 ## Build and verification
 
-Use JDK 21, Android SDK Platform 36, and Build Tools 36.0.0. Set ANDROID_HOME or an ignored
-local.properties containing sdk.dir. Minimum API is 23; bytecode targets JVM 17.
-Versions are centralized in gradle/libs.versions.toml.
+Use JDK 21, Android SDK Platform 36, Build Tools 36.0.0, and JVM target 17. Set ANDROID_HOME
+or an ignored local.properties containing sdk.dir. App/library/benchmark minSdk is 23;
+Macrobenchmark minSdk is 31. Dependency versions live in gradle/libs.versions.toml.
 
-Build the library, run its local JVM tests, and check Android lint:
+Build, run lint, and assemble all benchmark APKs without a device:
 
 ```shell
-./gradlew :library:build
+./gradlew build :app:assembleDebug :app:assembleBenchmark \
+  :benchmark:assembleReleaseAndroidTest :macrobenchmark:assembleBenchmark --continue --max-workers=1
 ```
 
-V2 JVM tests cover factory and implementation behavior, default elevation and border,
-nullable interaction and enabled forwarding, callback equality/hashCode, delegated copy
-chains, custom interface implementations, and Java overloads.
+Install the app and start each screen independently:
 
-V3 JVM tests additionally cover rebinding across method dependencies and copy chains,
-unchanged-copy equality, null override semantics, callback identity, fresh containers,
-one snapshot per copy, manual implementations, and preserved external captures.
+```shell
+./gradlew :app:installDebug
+adb shell am force-stop com.alexcawl.contract.benchmark.app
+adb shell am start -W -n com.alexcawl.contract.benchmark.app/.v1.ActivityV1
+adb shell am force-stop com.alexcawl.contract.benchmark.app
+adb shell am start -W -n com.alexcawl.contract.benchmark.app/.v2.ActivityV2
+adb shell am force-stop com.alexcawl.contract.benchmark.app
+adb shell am start -W -n com.alexcawl.contract.benchmark.app/.v3.ActivityV3
+```
 
-The app and legacy UI tests already reference the previous demo/contract API. Migrating
-them is separate work, so the full project build and connected UI tests are not part of V2/V3
-verification. No visual parity or animation timing measurements have been collected.
+These adb timings are smoke checks, not substitutes for Macrobenchmark results.
 
-## Benchmark infrastructure
-
-After the legacy UI tests are migrated, exercise correctness and infrastructure without
-collecting performance metrics:
+Exercise the existing benchmark scenarios on a device or emulator without collecting performance
+results. Heap captures remain opt-in:
 
 ```shell
 ./gradlew :benchmark:connectedReleaseAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true
+./gradlew :macrobenchmark:connectedBenchmarkAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true
 ```
 
-Run performance measurements on a physical device. The benchmark module retains
-AndroidBenchmarkRunner, release tests signed with the debug key, no minification, and the
-benchmark plugin's default AOT compilation. Do not disable benchmark environment checks
-to obtain emulator timings. Reports appear under
-`benchmark/build/outputs/connected_android_test_additional_output/`.
+This project measures contracts; it does not test their correctness. Build, lint, and dry runs
+verify that the measurement scenarios remain runnable.
+
+## Microbenchmark: creation and copy
+
+Run all three version classes on a physical device:
+
+```shell
+./gradlew :benchmark:connectedReleaseAndroidTest
+```
+
+Select one version when needed:
+
+```shell
+./gradlew :benchmark:connectedReleaseAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.V1ContractBenchmark
+```
+
+Use V2ContractBenchmark or V3ContractBenchmark similarly. Each class has six cases: Size and
+Appearance, each with create, unchanged copy, and full copy (18 cases total):
+
+- `create`: direct factory invocation, including callback construction.
+- `copy`: unchanged copy using that version's default-copy implementation.
+- `copyAll`: direct copy with every callback replaced. Size supplies contentArrangement and
+  contentAlignment; Appearance supplies shape, containerColor, contentColor, shadowElevation, and border.
+
+Tokens and source contracts are prepared outside timed work. Factories/copy are called directly
+inside measured blocks. Their callbacks capture local token values, not the benchmark instance.
+BlackHole consumes the result so it cannot be discarded as unused.
+
+AndroidX warms up and reports timeNs and allocationCount. Allocations are counts of allocated
+objects, not bytes or retained size. These cases measure warmed-up construction/copy, not
+composable method invocation, MaterialTheme resolution, remember hits, or Activity startup.
+
+Microbenchmarks retain AndroidBenchmarkRunner, release tests, debug signing, no minification,
+and default AndroidX AOT compilation. The Compose compiler remains necessary for V1's composable
+callbacks; Compose correctness-test libraries and a test Activity are not needed.
+
+## Macrobenchmark: startup and frames
+
+Run on a physical device with API 31 or later:
+
+```shell
+./gradlew :macrobenchmark:connectedBenchmarkAndroidTest
+```
+
+Each version retains three scenarios, each with ten iterations and CompilationMode.Full():
+
+- `coldStartup`: StartupTimingMetric, including initial display and ReportDrawn completion.
+- `scroll`: FrameTimingMetric over five forward and five backward flings at the same speed.
+- `copyAllUpdates`: FrameTimingMetric over ten appearance changes, rebuilding visible copies.
+
+Each iteration starts its Activity through an explicit Intent. Cold startup uses StartupMode.COLD;
+frame tests kill the target process and launch outside measured work. Resource tags and revision
+labels remain identical across the three private scenes for UI Automator synchronization.
+
+The app benchmark build is non-debuggable, profileable, unminified, debug-signed, and includes
+ProfileInstaller. The Macrobenchmark APK is a separate self-instrumenting process. Frame metrics
+cover the UI journey, including Compose, layout, drawing, ripple, and rendering. They are not
+isolated timings of copy or CPU recomposition; inspect Perfetto to attribute differences.
+Full AOT and no R8 are controlled defaults, not predictions for every production build.
+
+## Memory: heap dumps
+
+Capture all three version classes separately from timed benchmarks:
+
+```shell
+./gradlew :benchmark:connectedReleaseAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.V1ContractHeapDumpTest,com.alexcawl.contract.benchmark.test.v2.V2ContractHeapDumpTest,com.alexcawl.contract.benchmark.test.v3.V3ContractHeapDumpTest \
+  -Pandroid.testInstrumentationRunnerArguments.heapDump=true
+```
+
+The class filter can select just one version. Each class produces eight named HPROF files:
+Size and Appearance, with create, copy, copyAll, and chain32 (24 files total). Chain32 performs
+32 full copies, supplying every callback each time. Keep at least 2 GB free for a full run;
+these are full-process dumps rather than files containing only the sample.
+
+Only the corresponding class's static current field holds the final contract. Construction
+returns before dumping, so earlier sources stay live only when the final contract references
+them. Each capture invokes GC and clears current in finally.
+
+Open a dump in Android Studio Profiler and inspect V1ContractHeapDumpTest.current,
+V2ContractHeapDumpTest.current, or V3ContractHeapDumpTest.current:
+
+- Shallow Size is the final contract object's own Java heap size.
+- Retained Size includes objects dominated by that contract: callbacks, wrappers, and source
+  contracts without other live roots. Shared shapes and cached lambdas need not contribute.
+
+V3's temporary Contract snapshot may be collected before capture. Its allocation belongs in
+operation allocation counts, not live retained size. Results depend on ART, architecture, and
+callback captures; these samples do not measure the entire UI heap.
+
+## Reports
+
+Gradle copies JSON, traces, and opt-in HPROF files below each test module's
+build/outputs/connected_android_test_additional_output/. AGP chooses variant/device subdirectories.
+When running instrumentation without additionalTestOutputDir, heap captures fall back to the test
+APK's external-files heap-dumps directory; paths also appear in instrumentation status.
+
+Compare on the same physical device, OS, refresh rate, and build configuration. Inspect repeated
+runs and traces before attributing small differences to contract architecture. Do not suppress
+benchmark environment checks for emulator performance numbers. Dry runs are infrastructure checks;
+physical measurements and manual Profiler analysis remain separate steps.

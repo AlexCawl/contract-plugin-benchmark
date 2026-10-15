@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.app.v1
+package com.alexcawl.contract.benchmark.library.v1
 
 import java.lang.Byte
 import java.lang.Double

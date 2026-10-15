@@ -18,3 +18,4 @@ rootProject.name = "contract-plugin-benchmark"
 include("app")
 include("benchmark")
 include("library")
+include("macrobenchmark")

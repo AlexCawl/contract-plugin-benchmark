@@ -24,6 +24,12 @@ android {
         release {
             isMinifyEnabled = false
         }
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            matchingFallbacks += "release"
+        }
     }
 
     compileOptions {
@@ -42,4 +48,5 @@ dependencies {
     implementation(project(":library"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
+    "benchmarkImplementation"(libs.androidx.profileinstaller)
 }

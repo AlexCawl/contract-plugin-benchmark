@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.app.v2
+package com.alexcawl.contract.benchmark.library.v2
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.DragInteraction

@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.app.v1
+package com.alexcawl.contract.benchmark.library.v1
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column

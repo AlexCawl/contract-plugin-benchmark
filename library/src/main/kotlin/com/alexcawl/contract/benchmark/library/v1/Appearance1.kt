@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.app.v1
+package com.alexcawl.contract.benchmark.library.v1
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
