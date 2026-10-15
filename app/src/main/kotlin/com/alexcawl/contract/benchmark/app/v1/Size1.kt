@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.library.v1
+package com.alexcawl.contract.benchmark.app.v1
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
@@ -40,7 +40,6 @@ inline fun Size1(
     override fun contentAlignment(): Alignment.Horizontal = contentAlignment.invoke(this)
 }
 
-/** Use [wrapped] in overrides to call the original without recursion. */
 interface Size1Wrapper : Size1 {
     val wrapped: Size1
 }
@@ -60,7 +59,6 @@ inline fun Size1.copy(
     override fun contentAlignment(): Alignment.Horizontal = contentAlignment.invoke(this)
 }
 
-/** Retains the first receiver and captures; read State for values that must change. */
 @Composable
 inline fun Size1.rememberCopy(
     crossinline contentArrangement: @Composable Size1Wrapper.() -> Arrangement.Vertical = { wrapped.contentArrangement() },

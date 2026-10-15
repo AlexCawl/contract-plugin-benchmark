@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.library.v2
+package com.alexcawl.contract.benchmark.app.v2
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.DragInteraction
@@ -23,13 +23,15 @@ interface Appearance2 {
 
     fun contentColor(enabled: Boolean): Color
 
-    fun shadowElevation(enabled: Boolean, interaction: Interaction?): Dp = if (!enabled) {
-        0.dp
-    } else {
-        when (interaction) {
-            is HoverInteraction.Enter -> 1.dp
-            is DragInteraction.Start -> 6.dp
-            else -> 0.dp
+    fun shadowElevation(enabled: Boolean, interaction: Interaction?): Dp {
+        return if (!enabled) {
+            0.dp
+        } else {
+            when (interaction) {
+                is HoverInteraction.Enter -> 1.dp
+                is DragInteraction.Start -> 6.dp
+                else -> 0.dp
+            }
         }
     }
 
@@ -59,12 +61,12 @@ object Appearance2Presets {
         }
 }
 
-class Appearance2Impl(
+private class Appearance2Impl(
     private val shape: () -> Shape,
     private val containerColor: (enabled: Boolean) -> Color,
     private val contentColor: (enabled: Boolean) -> Color,
-    private val shadowElevation: (enabled: Boolean, interaction: Interaction?) -> Dp,
-    private val border: () -> BorderStroke?,
+    private val shadowElevation: ((enabled: Boolean, interaction: Interaction?) -> Dp)?,
+    private val border: (() -> BorderStroke?)?,
 ) : Appearance2 {
     override fun shape(): Shape = shape.invoke()
 
@@ -72,27 +74,31 @@ class Appearance2Impl(
 
     override fun contentColor(enabled: Boolean): Color = contentColor.invoke(enabled)
 
-    override fun shadowElevation(enabled: Boolean, interaction: Interaction?): Dp =
-        shadowElevation.invoke(enabled, interaction)
+    override fun shadowElevation(enabled: Boolean, interaction: Interaction?): Dp = if (shadowElevation != null) shadowElevation.invoke(enabled, interaction) else super.shadowElevation(enabled, interaction)
 
-    override fun border(): BorderStroke? = border.invoke()
+    override fun border(): BorderStroke? = if (border != null) border.invoke() else super.border()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is Appearance2Impl) return false
-        return shape == other.shape &&
-            containerColor == other.containerColor &&
-            contentColor == other.contentColor &&
-            shadowElevation == other.shadowElevation &&
-            border == other.border
+        if (javaClass != other?.javaClass) return false
+
+        other as Appearance2Impl
+
+        if (shape != other.shape) return false
+        if (containerColor != other.containerColor) return false
+        if (contentColor != other.contentColor) return false
+        if (shadowElevation != other.shadowElevation) return false
+        if (border != other.border) return false
+
+        return true
     }
 
     override fun hashCode(): Int {
         var result = shape.hashCode()
         result = 31 * result + containerColor.hashCode()
         result = 31 * result + contentColor.hashCode()
-        result = 31 * result + shadowElevation.hashCode()
-        result = 31 * result + border.hashCode()
+        result = 31 * result + (shadowElevation?.hashCode() ?: 0)
+        result = 31 * result + (border?.hashCode() ?: 0)
         return result
     }
 }
@@ -102,18 +108,8 @@ fun Appearance2(
     shape: () -> Shape,
     containerColor: (enabled: Boolean) -> Color,
     contentColor: (enabled: Boolean) -> Color,
-    shadowElevation: (enabled: Boolean, interaction: Interaction?) -> Dp = { enabled, interaction ->
-        if (!enabled) {
-            0.dp
-        } else {
-            when (interaction) {
-                is HoverInteraction.Enter -> 1.dp
-                is DragInteraction.Start -> 6.dp
-                else -> 0.dp
-            }
-        }
-    },
-    border: () -> BorderStroke? = { null },
+    shadowElevation: ((enabled: Boolean, interaction: Interaction?) -> Dp)? = null,
+    border: (() -> BorderStroke?)? = null,
 ): Appearance2 = Appearance2Impl(shape, containerColor, contentColor, shadowElevation, border)
 
 @JvmOverloads

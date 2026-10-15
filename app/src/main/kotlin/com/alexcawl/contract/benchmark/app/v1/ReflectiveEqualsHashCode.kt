@@ -1,5 +1,10 @@
-package com.alexcawl.contract.benchmark.library.v1
+package com.alexcawl.contract.benchmark.app.v1
 
+import java.lang.Byte
+import java.lang.Double
+import java.lang.Float
+import java.lang.Long
+import java.lang.Short
 import java.lang.reflect.Field
 import java.util.concurrent.ConcurrentHashMap
 
@@ -17,13 +22,13 @@ abstract class ReflectiveEqualsHashCode {
             if (type.isPrimitive) {
                 when {
                     type === java.lang.Boolean.TYPE -> field.getBoolean(this) == field.getBoolean(other)
-                    type === java.lang.Character.TYPE -> field.getChar(this) == field.getChar(other)
-                    type === java.lang.Byte.TYPE -> field.getByte(this) == field.getByte(other)
-                    type === java.lang.Short.TYPE -> field.getShort(this) == field.getShort(other)
-                    type === java.lang.Integer.TYPE -> field.getInt(this) == field.getInt(other)
-                    type === java.lang.Long.TYPE -> field.getLong(this) == field.getLong(other)
-                    type === java.lang.Float.TYPE -> field.getFloat(this) == field.getFloat(other)
-                    type === java.lang.Double.TYPE -> field.getDouble(this) == field.getDouble(other)
+                    type === Character.TYPE -> field.getChar(this) == field.getChar(other)
+                    type === Byte.TYPE -> field.getByte(this) == field.getByte(other)
+                    type === Short.TYPE -> field.getShort(this) == field.getShort(other)
+                    type === Integer.TYPE -> field.getInt(this) == field.getInt(other)
+                    type === Long.TYPE -> field.getLong(this) == field.getLong(other)
+                    type === Float.TYPE -> field.getFloat(this) == field.getFloat(other)
+                    type === Double.TYPE -> field.getDouble(this) == field.getDouble(other)
                     else -> error("Invalid type")
                 }
             } else {

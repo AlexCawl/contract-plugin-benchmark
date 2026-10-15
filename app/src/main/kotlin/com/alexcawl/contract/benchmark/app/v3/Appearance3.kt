@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.library.v3
+package com.alexcawl.contract.benchmark.app.v3
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.DragInteraction
@@ -23,13 +23,15 @@ interface Appearance3 {
 
     fun contentColor(enabled: Boolean): Color
 
-    fun shadowElevation(enabled: Boolean, interaction: Interaction?): Dp = if (!enabled) {
-        0.dp
-    } else {
-        when (interaction) {
-            is HoverInteraction.Enter -> 1.dp
-            is DragInteraction.Start -> 6.dp
-            else -> 0.dp
+    fun shadowElevation(enabled: Boolean, interaction: Interaction?): Dp {
+        return if (!enabled) {
+            0.dp
+        } else {
+            when (interaction) {
+                is HoverInteraction.Enter -> 1.dp
+                is DragInteraction.Start -> 6.dp
+                else -> 0.dp
+            }
         }
     }
 

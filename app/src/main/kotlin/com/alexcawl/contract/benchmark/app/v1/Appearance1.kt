@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.library.v1
+package com.alexcawl.contract.benchmark.app.v1
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -118,7 +118,7 @@ inline fun Appearance1(
     crossinline containerColor: @Composable Appearance1.(enabled: Boolean) -> Color,
     crossinline contentColor: @Composable Appearance1.(enabled: Boolean) -> Color,
     crossinline shadowElevation: @Composable Appearance1.(enabled: Boolean, interactionSource: InteractionSource) -> Dp,
-    crossinline border: @Composable Appearance1.() -> BorderStroke? = { null },
+    noinline border: (@Composable Appearance1.() -> BorderStroke?)? = null,
 ): Appearance1 = object : ReflectiveEqualsHashCode(), Appearance1 {
     @Composable
     override fun shape(): Shape = shape.invoke(this)
@@ -130,14 +130,12 @@ inline fun Appearance1(
     override fun contentColor(enabled: Boolean): Color = contentColor.invoke(this, enabled)
 
     @Composable
-    override fun shadowElevation(enabled: Boolean, interactionSource: InteractionSource): Dp =
-        shadowElevation.invoke(this, enabled, interactionSource)
+    override fun shadowElevation(enabled: Boolean, interactionSource: InteractionSource): Dp = shadowElevation.invoke(this, enabled, interactionSource)
 
     @Composable
-    override fun border(): BorderStroke? = border.invoke(this)
+    override fun border(): BorderStroke? = if (border != null) border.invoke(this) else super.border()
 }
 
-/** Use [wrapped] in overrides to call the original without recursion. */
 interface Appearance1Wrapper : Appearance1 {
     val wrapped: Appearance1
 }
@@ -147,8 +145,7 @@ inline fun Appearance1.copy(
     crossinline shape: @Composable Appearance1Wrapper.() -> Shape = { wrapped.shape() },
     crossinline containerColor: @Composable Appearance1Wrapper.(enabled: Boolean) -> Color = { wrapped.containerColor(it) },
     crossinline contentColor: @Composable Appearance1Wrapper.(enabled: Boolean) -> Color = { wrapped.contentColor(it) },
-    crossinline shadowElevation: @Composable Appearance1Wrapper.(enabled: Boolean, interactionSource: InteractionSource) -> Dp =
-        { enabled, interactionSource -> wrapped.shadowElevation(enabled, interactionSource) },
+    crossinline shadowElevation: @Composable Appearance1Wrapper.(enabled: Boolean, interactionSource: InteractionSource) -> Dp = { enabled, interactionSource -> wrapped.shadowElevation(enabled, interactionSource) },
     crossinline border: @Composable Appearance1Wrapper.() -> BorderStroke? = { wrapped.border() },
 ): Appearance1 = object : ReflectiveEqualsHashCode(), Appearance1Wrapper {
     override val wrapped: Appearance1
@@ -164,21 +161,18 @@ inline fun Appearance1.copy(
     override fun contentColor(enabled: Boolean): Color = contentColor.invoke(this, enabled)
 
     @Composable
-    override fun shadowElevation(enabled: Boolean, interactionSource: InteractionSource): Dp =
-        shadowElevation.invoke(this, enabled, interactionSource)
+    override fun shadowElevation(enabled: Boolean, interactionSource: InteractionSource): Dp = shadowElevation.invoke(this, enabled, interactionSource)
 
     @Composable
     override fun border(): BorderStroke? = border.invoke(this)
 }
 
-/** Retains the first receiver and captures; read State for values that must change. */
 @Composable
 inline fun Appearance1.rememberCopy(
     crossinline shape: @Composable Appearance1Wrapper.() -> Shape = { wrapped.shape() },
     crossinline containerColor: @Composable Appearance1Wrapper.(enabled: Boolean) -> Color = { wrapped.containerColor(it) },
     crossinline contentColor: @Composable Appearance1Wrapper.(enabled: Boolean) -> Color = { wrapped.contentColor(it) },
-    crossinline shadowElevation: @Composable Appearance1Wrapper.(enabled: Boolean, interactionSource: InteractionSource) -> Dp =
-        { enabled, interactionSource -> wrapped.shadowElevation(enabled, interactionSource) },
+    crossinline shadowElevation: @Composable Appearance1Wrapper.(enabled: Boolean, interactionSource: InteractionSource) -> Dp = { enabled, interactionSource -> wrapped.shadowElevation(enabled, interactionSource) },
     crossinline border: @Composable Appearance1Wrapper.() -> BorderStroke? = { wrapped.border() },
 ): Appearance1 = remember {
     copy(

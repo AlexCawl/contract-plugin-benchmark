@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.library.v2
+package com.alexcawl.contract.benchmark.app.v2
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
@@ -31,14 +31,23 @@ class Size2Impl(
     override fun contentArrangement(): Arrangement.Vertical = contentArrangement.invoke()
 
     override fun contentAlignment(): Alignment.Horizontal = contentAlignment.invoke()
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is Size2Impl) return false
-        return contentArrangement == other.contentArrangement && contentAlignment == other.contentAlignment
+        if (javaClass != other?.javaClass) return false
+
+        other as Size2Impl
+
+        if (contentArrangement != other.contentArrangement) return false
+        if (contentAlignment != other.contentAlignment) return false
+
+        return true
     }
 
-    override fun hashCode(): Int = 31 * contentArrangement.hashCode() + contentAlignment.hashCode()
+    override fun hashCode(): Int {
+        var result = contentArrangement.hashCode()
+        result = 31 * result + contentAlignment.hashCode()
+        return result
+    }
 }
 
 @JvmOverloads
@@ -47,7 +56,6 @@ fun Size2(
     contentAlignment: () -> Alignment.Horizontal,
 ): Size2 = Size2Impl(contentArrangement, contentAlignment)
 
-/** Method defaults remain bound to the original receiver. */
 @JvmOverloads
 fun Size2.copy(
     contentArrangement: () -> Arrangement.Vertical = this::contentArrangement,

@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.library.v2
+package com.alexcawl.contract.benchmark.app.v3
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -24,10 +24,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun Card2(
+fun Card3(
     onClick: () -> Unit,
-    size: Size2,
-    appearance: Appearance2,
+    size: Size3,
+    appearance: Appearance3,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
@@ -40,7 +40,7 @@ fun Card2(
         shape = appearance.shape(),
         color = appearance.containerColor(enabled),
         contentColor = appearance.contentColor(enabled),
-        shadowElevation = animatedShadowElevation(appearance, enabled, interactionSource),
+        shadowElevation = appearance.animatedShadowElevation(enabled, interactionSource),
         border = appearance.border(),
         interactionSource = interactionSource,
     ) {
@@ -54,8 +54,7 @@ fun Card2(
 
 /** Filled Card elevation transitions from Material3 1.4.0, matching V1. */
 @Composable
-private fun animatedShadowElevation(
-    appearance: Appearance2,
+private fun Appearance3.animatedShadowElevation(
     enabled: Boolean,
     interactionSource: InteractionSource,
 ): Dp {
@@ -77,7 +76,7 @@ private fun animatedShadowElevation(
         }
     }
     val interaction = interactions.lastOrNull()
-    val target = appearance.shadowElevation(enabled, interaction)
+    val target = shadowElevation(enabled, interaction)
     val elevation = remember { Animatable(target, Dp.VectorConverter) }
     LaunchedEffect(target, enabled) {
         if (!enabled) {

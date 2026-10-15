@@ -1,4 +1,4 @@
-package com.alexcawl.contract.benchmark.library.v3
+package com.alexcawl.contract.benchmark.app.v3
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
