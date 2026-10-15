@@ -227,6 +227,44 @@ Microbenchmarks retain AndroidBenchmarkRunner, release tests, debug signing, no 
 and default AndroidX AOT compilation. The Compose compiler remains necessary for V1's composable
 callbacks; Compose correctness-test libraries and a test Activity are not needed.
 
+### Allocated bytes per operation
+
+Validate the deprecated ART allocation-size counter on the physical device before collecting bytes:
+
+```shell
+./gradlew :microbenchmark:connectedReleaseAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.AllocationBytesCaptureTest
+```
+
+The calibration warms up the counter, then checks three rounds of empty work, 1024-byte and
+2048-byte arrays, and allocations excluded by pause/resume. Empty work must allocate at most
+1 byte per operation; array-size differences and pause exclusion must agree within 1%.
+A failed calibration means this device's byte measurements must not be used.
+
+Collect bytes in a separate run of the same 12 contract cases:
+
+```shell
+./gradlew :microbenchmark:connectedReleaseAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.allocationBytes=true
+```
+
+With `allocationBytes=true`, each contract benchmark replaces its primary timing metric with
+`AllocationBytesCapture`. AndroidX divides the captured bytes by the number of operations and
+reports `allocationBytes` in bytes per operation in its JSON. Do not divide the result again.
+AndroidX still collects `allocationCount` in its separate allocation phase. Without the argument,
+the original `timeNs` and `allocationCount` measurements remain enabled.
+
+The metric uses `Debug.startAllocCounting()`, `Debug.stopAllocCounting()`, and
+`Debug.getGlobalAllocSize()`, subtracting allocations made while measurement is paused.
+These APIs are deprecated and the signed 32-bit byte counter can overflow in long or large
+allocation batches. The counter covers Java-heap allocations from all process threads, including
+temporary objects and possible background work; it does not measure native allocations or
+live/retained size. It cannot be reconstructed from `allocationCount` or an HPROF snapshot.
+
+Use the ordinary run for timing comparisons. Dry-run mode skips custom metric collection, so
+adding `allocationBytes=true` to a dry run checks configuration and scenarios only; the calibration
+test calls the capture directly and checks the counter itself.
+
 ## Macrobenchmark: startup and frames
 
 Run on a physical device with API 31 or later:

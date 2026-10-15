@@ -1,6 +1,8 @@
 package com.alexcawl.contract.benchmark.test.v2
 
 import androidx.benchmark.BlackHole
+import androidx.benchmark.ExperimentalBenchmarkConfigApi
+import androidx.benchmark.MicrobenchmarkConfig
 import androidx.benchmark.junit4.BenchmarkRule
 import androidx.benchmark.junit4.measureRepeated
 import androidx.compose.foundation.BorderStroke
@@ -9,14 +11,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.test.platform.app.InstrumentationRegistry
 import com.alexcawl.contract.benchmark.library.v2.Appearance2
 import com.alexcawl.contract.benchmark.library.v2.copy
+import com.alexcawl.contract.benchmark.test.AllocationBytesCapture
 import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalBenchmarkConfigApi::class)
 class Appearance2Benchmark {
     @get:Rule
-    val benchmarkRule = BenchmarkRule()
+    val benchmarkRule = BenchmarkRule(
+        if (InstrumentationRegistry.getArguments().getString("allocationBytes") == "true") {
+            MicrobenchmarkConfig(metrics = listOf(AllocationBytesCapture()))
+        } else {
+            MicrobenchmarkConfig()
+        },
+    )
 
     @Suppress("NOTHING_TO_INLINE")
     private inline fun appearance(
