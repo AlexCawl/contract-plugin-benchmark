@@ -25,14 +25,14 @@ compiler plugin, annotations, published artifacts, included builds, or another c
 - `library/src/main/`: only library.v1/v2 contracts and Card composables. Export Material3 through api.
 - `app/src/main/`: independent Activity1 and Activity2, each with its own private scene. V1 is the launcher.
 - `app/src/benchmark/`: profileable manifest overlay for the non-debuggable benchmark build.
-- `benchmark/src/androidTest/`: separate Size1Benchmark/Appearance1Benchmark/Size2Benchmark/Appearance2Benchmark and Size1HeapDumpTest/Appearance1HeapDumpTest/Size2HeapDumpTest/Appearance2HeapDumpTest classes.
-- `benchmark/src/androidTest/` also contains HeapDumpUtils.kt in the common test package for shared capture steps.
+- `microbenchmark/src/androidTest/`: separate Size1Benchmark/Appearance1Benchmark/Size2Benchmark/Appearance2Benchmark and Size1HeapDumpTest/Appearance1HeapDumpTest/Size2HeapDumpTest/Appearance2HeapDumpTest classes.
+- `microbenchmark/src/androidTest/` also contains HeapDumpUtils.kt in the common test package for shared capture steps.
 - `macrobenchmark/src/main/`: self-instrumenting test APK targeting app's benchmark variant,
   with separate Activity1Macrobenchmark and Activity2Macrobenchmark classes.
 - `gradle/libs.versions.toml`: dependency and plugin versions.
 
-App uses com.android.application; library and benchmark use com.android.library;
-macrobenchmark uses com.android.test. App and benchmark depend directly on library.
+App uses com.android.application; library and microbenchmark use com.android.library;
+macrobenchmark uses com.android.test. App and microbenchmark depend directly on library.
 Library must stay independent of app. Do not introduce a common renderer or exported scene API.
 
 ## Measurement Rules
@@ -64,18 +64,18 @@ outside timed work, with the same token values and callback captures as object b
 
 ## Build and Verification
 
-Use JDK 21, Android SDK Platform 36, Build Tools 36.0.0, and JVM target 17. App/library/benchmark
+Use JDK 21, Android SDK Platform 36, Build Tools 36.0.0, and JVM target 17. App/library/microbenchmark
 minSdk is 23; Macrobenchmark requires API 31. Run from this root:
 
-- `./gradlew build :app:assembleDebug :app:assembleBenchmark :benchmark:assembleReleaseAndroidTest :macrobenchmark:assembleBenchmark --continue --max-workers=1`: build, lint, and benchmark APKs without a device.
+- `./gradlew build :app:assembleDebug :app:assembleBenchmark :microbenchmark:assembleReleaseAndroidTest :macrobenchmark:assembleBenchmark --continue --max-workers=1`: build, lint, and benchmark APKs without a device.
 - `./gradlew :app:installDebug`: install the app; start each Activity with an explicit Intent.
-- `./gradlew :benchmark:connectedReleaseAndroidTest -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true`: Microbenchmark smoke checks, without performance results.
+- `./gradlew :microbenchmark:connectedReleaseAndroidTest -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true`: Microbenchmark smoke checks, without performance results.
 - `./gradlew :macrobenchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true`: Macrobenchmark smoke checks.
-- `./gradlew :benchmark:connectedReleaseAndroidTest`: physical-device object measurements for all four contract/version classes. Use the class argument to select Size1Benchmark, Appearance1Benchmark, Size2Benchmark, or Appearance2Benchmark.
+- `./gradlew :microbenchmark:connectedReleaseAndroidTest`: physical-device object measurements for all four contract/version classes. Use the class argument to select Size1Benchmark, Appearance1Benchmark, Size2Benchmark, or Appearance2Benchmark.
 - `./gradlew :macrobenchmark:connectedBenchmarkAndroidTest`: physical-device startup/frame measurements.
 - `./gradlew :macrobenchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.macro.Activity1Macrobenchmark`: three Activity1 scenarios. Select Activity2Macrobenchmark similarly.
 - `./gradlew :macrobenchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.macro.Activity2Macrobenchmark#scroll`: one Activity2 scenario.
-- `./gradlew :benchmark:connectedReleaseAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.Size1HeapDumpTest -Pandroid.testInstrumentationRunnerArguments.heapDump=true`: four Size heap samples for V1. Select Appearance or V2 similarly, or pass all four class names separated by commas for 16 dumps. Append #copyAll to a class name to select one operation.
+- `./gradlew :microbenchmark:connectedReleaseAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.Size1HeapDumpTest -Pandroid.testInstrumentationRunnerArguments.heapDump=true`: four Size heap samples for V1. Select Appearance or V2 similarly, or pass all four class names separated by commas for 16 dumps. Append #copyAll to a class name to select one operation.
 
 Microbenchmarks use AndroidBenchmarkRunner, release tests, debug signing, no minification,
 and default AndroidX AOT compilation. Keep the Compose compiler for V1's composable callbacks;

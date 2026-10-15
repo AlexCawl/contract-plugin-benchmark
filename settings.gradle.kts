@@ -16,6 +16,6 @@ dependencyResolutionManagement {
 rootProject.name = "contract-plugin-benchmark"
 
 include("app")
-include("benchmark")
+include("microbenchmark")
 include("library")
 include("macrobenchmark")

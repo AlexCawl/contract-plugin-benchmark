@@ -12,7 +12,7 @@ artifacts, or another checkout. Only the standard Kotlin Compose compiler is ena
 - `library`: contracts in library.v1/v2 and the original Card implementations. Exports Material3.
 - `app`: Activity1 and Activity2. Each scene is a private composable in its
   Activity file, called only by that Activity. V1 is the launcher; start V2 directly.
-- `benchmark`: separate Size1Benchmark/Appearance1Benchmark/Size2Benchmark/Appearance2Benchmark and
+- `microbenchmark`: separate Size1Benchmark/Appearance1Benchmark/Size2Benchmark/Appearance2Benchmark and
   Size1HeapDumpTest/Appearance1HeapDumpTest/Size2HeapDumpTest/Appearance2HeapDumpTest classes.
 - `macrobenchmark`: self-instrumenting com.android.test module targeting app's benchmark build,
   with separate Activity1Macrobenchmark and Activity2Macrobenchmark classes.
@@ -156,14 +156,14 @@ V1's shadowElevation(enabled, interactionSource) and its animation remain unchan
 ## Build and verification
 
 Use JDK 21, Android SDK Platform 36, Build Tools 36.0.0, and JVM target 17. Set ANDROID_HOME
-or an ignored local.properties containing sdk.dir. App/library/benchmark minSdk is 23;
+or an ignored local.properties containing sdk.dir. App/library/microbenchmark minSdk is 23;
 Macrobenchmark minSdk is 31. Dependency versions live in gradle/libs.versions.toml.
 
 Build, run lint, and assemble all benchmark APKs without a device:
 
 ```shell
 ./gradlew build :app:assembleDebug :app:assembleBenchmark \
-  :benchmark:assembleReleaseAndroidTest :macrobenchmark:assembleBenchmark --continue --max-workers=1
+  :microbenchmark:assembleReleaseAndroidTest :macrobenchmark:assembleBenchmark --continue --max-workers=1
 ```
 
 Install the app and start each screen independently:
@@ -182,7 +182,7 @@ Exercise the existing benchmark scenarios on a device or emulator without collec
 results. Heap captures remain opt-in:
 
 ```shell
-./gradlew :benchmark:connectedReleaseAndroidTest \
+./gradlew :microbenchmark:connectedReleaseAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true
 ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true
@@ -196,13 +196,13 @@ verify that the measurement scenarios remain runnable.
 Run all four contract/version classes on a physical device:
 
 ```shell
-./gradlew :benchmark:connectedReleaseAndroidTest
+./gradlew :microbenchmark:connectedReleaseAndroidTest
 ```
 
 Select one contract/version when needed:
 
 ```shell
-./gradlew :benchmark:connectedReleaseAndroidTest \
+./gradlew :microbenchmark:connectedReleaseAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.Size1Benchmark
 ```
 
@@ -268,7 +268,7 @@ Full AOT and no R8 are controlled defaults, not predictions for every production
 Capture all four contract/version classes separately from timed benchmarks:
 
 ```shell
-./gradlew :benchmark:connectedReleaseAndroidTest \
+./gradlew :microbenchmark:connectedReleaseAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.Size1HeapDumpTest,com.alexcawl.contract.benchmark.test.v1.Appearance1HeapDumpTest,com.alexcawl.contract.benchmark.test.v2.Size2HeapDumpTest,com.alexcawl.contract.benchmark.test.v2.Appearance2HeapDumpTest \
   -Pandroid.testInstrumentationRunnerArguments.heapDump=true
 ```
@@ -286,7 +286,7 @@ these are full-process dumps rather than files containing only the sample.
 The class filter can select one contract/version, or one method:
 
 ```shell
-./gradlew :benchmark:connectedReleaseAndroidTest \
+./gradlew :microbenchmark:connectedReleaseAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.Size1HeapDumpTest#copyAll \
   -Pandroid.testInstrumentationRunnerArguments.heapDump=true
 ```
