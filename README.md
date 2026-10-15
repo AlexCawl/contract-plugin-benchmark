@@ -1,7 +1,7 @@
 # Contract Plugin Benchmark
 
-An independent Android project measuring V1, V2, and V3 Compose contracts. Each version has
-Size and Appearance contracts and its own Card1/Card2/Card3 implementation. Surface, Column,
+An independent Android project measuring V1 and V2 Compose contracts. Each version has
+Size and Appearance contracts and its own Card1/Card2 implementation. Surface, Column,
 and elevation animation remain separate in those composables.
 
 The project does not depend on the contract compiler plugin, its annotations, published
@@ -9,11 +9,11 @@ artifacts, or another checkout. Only the standard Kotlin Compose compiler is ena
 
 ## Modules and application
 
-- `library`: contracts in library.v1/v2/v3 and the original Card implementations. Exports Material3.
-- `app`: ActivityV1, ActivityV2, and ActivityV3. Each scene is a private composable in its
-  Activity file, called only by that Activity. V1 is the launcher; start V2/V3 directly.
-- `benchmark`: separate V1ContractBenchmark/V2ContractBenchmark/V3ContractBenchmark and
-  V1ContractHeapDumpTest/V2ContractHeapDumpTest/V3ContractHeapDumpTest classes.
+- `library`: contracts in library.v1/v2 and the original Card implementations. Exports Material3.
+- `app`: ActivityV1 and ActivityV2. Each scene is a private composable in its
+  Activity file, called only by that Activity. V1 is the launcher; start V2 directly.
+- `benchmark`: separate V1ContractBenchmark/V2ContractBenchmark and
+  V1SizeHeapDumpTest/V1AppearanceHeapDumpTest/V2SizeHeapDumpTest/V2AppearanceHeapDumpTest classes.
 - `macrobenchmark`: self-instrumenting com.android.test module targeting app's benchmark build.
 
 There are no shared scenes, factory wrappers, input-holder types, or contract correctness tests.
@@ -28,29 +28,29 @@ this is not 1000 eagerly retained contracts.
 The appearance button alternates the same colors, shape, border, arrangement, and alignment
 in every version. The switch changes enabled and disabled colors. The same interaction source
 feeds Surface and pressed-state semantics. Both palettes use zero elevation for equivalent
-visual behavior; original preset animations remain unchanged in Card1/Card2/Card3.
+visual behavior; original preset animations remain unchanged in Card1/Card2.
 
 There is no navigation between benchmark Activities. Macrobenchmark starts its selected
 Activity directly in a fresh process.
 
 ## Contract API
 
-| Method | V1 | V2 | V3 |
-| --- | --- | --- | --- |
-| `contentArrangement(): Arrangement.Vertical` | Composable | Ordinary Kotlin | Ordinary Kotlin |
-| `contentAlignment(): Alignment.Horizontal` | Composable | Ordinary Kotlin | Ordinary Kotlin |
-| `shape(): Shape` | Composable | Ordinary Kotlin | Ordinary Kotlin |
-| `containerColor(enabled: Boolean): Color` | Composable | Ordinary Kotlin | Ordinary Kotlin |
-| `contentColor(enabled: Boolean): Color` | Composable | Ordinary Kotlin | Ordinary Kotlin |
-| `shadowElevation(...): Dp` | Composable; receives enabled and InteractionSource | Ordinary Kotlin; receives enabled and nullable Interaction | Same signature as V2 |
-| `border(): BorderStroke?` | Composable | Ordinary Kotlin | Ordinary Kotlin |
-| `contract(): Contract` | Not provided | Not provided | Fresh callback snapshot |
+| Method | V1 | V2 |
+| --- | --- | --- |
+| `contentArrangement(): Arrangement.Vertical` | Composable | Ordinary Kotlin |
+| `contentAlignment(): Alignment.Horizontal` | Composable | Ordinary Kotlin |
+| `shape(): Shape` | Composable | Ordinary Kotlin |
+| `containerColor(enabled: Boolean): Color` | Composable | Ordinary Kotlin |
+| `contentColor(enabled: Boolean): Color` | Composable | Ordinary Kotlin |
+| `shadowElevation(...): Dp` | Composable; receives enabled and InteractionSource | Ordinary Kotlin; receives enabled and nullable Interaction |
+| `border(): BorderStroke?` | Composable | Ordinary Kotlin |
+| `contract(): Contract` | Not provided | Fresh callback snapshot |
 
 Size presets use Arrangement.Top and Alignment.Start. Appearance presets use the current
 MaterialTheme, with no border and Filled Card elevation targets. V1 uses CardDefaults;
-V2 and V3 inline the Material3 1.4.0 Filled Card tokens.
+V2 inlines the Material3 1.4.0 Filled Card tokens.
 
-Card1, Card2, and Card3 retain onClick, size, appearance, modifier, enabled, interactionSource,
+Card1 and Card2 retain onClick, size, appearance, modifier, enabled, interactionSource,
 and arbitrary ColumnScope content. Each passes the same interaction source to its Surface
 and elevation logic. Typography and other content belong to the caller.
 
@@ -73,51 +73,9 @@ reference fields in distinct instances as unequal.
 
 ## V2 semantics
 
-V2 manually reproduces the historical architecture from contract-plugin commit
-`4bfa8d0`. Size2Impl and Appearance2Impl are named final classes that store ordinary
-callbacks without a receiver. Their explicit equals/hashCode compare those callbacks,
-rather than the values returned by methods; hashing uses multiplier 31 without reflection.
-
-Factories return the interface type. Appearance2 supplies factory defaults matching its
-default shadowElevation and border bodies. Factories and copy extensions have JvmOverloads;
-Size2's factory has no default parameters, so only its copy generates additional overloads.
-
-Copy defaults are bound references such as this::shape and this::containerColor. Copying
-works with any implementation of the interface. Unspecified methods continue to execute
-on the original receiver, even when other methods are overridden in the copy. Copy chains
-retain this delegation, and original.copy() can compare unequal to original because
-method references replace the original callbacks. Explicitly supplying the same callbacks
-preserves callback equality. V2 has no wrapper receiver or rememberCopy helper.
-
-Appearance2Presets.default directly resolves MaterialTheme.shapes.medium and four theme colors.
-The container uses surfaceContainerHighest. The disabled container composites surfaceVariant
-at alpha 0.38 over surfaceContainerHighest; disabled content also uses alpha 0.38.
-Content color is resolved from surfaceContainerHighest with ColorScheme.contentColorFor.
-The preset uses shape, containerColor, contentColor, disabledContainerColor, and disabledContentColor
-as remember keys, creating a new contract when any of those values changes. Callbacks capture
-the individual values directly. Existing copies remain bound to their original
-contract; recreate remembered copies with remember(original), as in the example below,
-to follow theme changes. V2 contract methods never call composable APIs themselves.
-
-Inside a MaterialTheme composition, using imports from
-`com.alexcawl.contract.benchmark.library.v2`:
-
-```kotlin
-val size = Size2Presets.default
-val original = Appearance2Presets.default
-val appearance = remember(original) {
-    original.copy(border = { BorderStroke(1.dp, Color.Blue) })
-}
-Card2(onClick = { /* caller-owned action */ }, size = size, appearance = appearance) {
-    Text("Arbitrary content")
-}
-```
-
-## V3 semantics
-
-V3 manually follows the current contract-plugin runtime architecture. Its factories accept
-ordinary receiver callbacks such as Size3.() -> Arrangement.Vertical and
-Appearance3.(Boolean) -> Color. Private final implementations invoke callbacks with the
+V2 manually follows the current contract-plugin runtime architecture. Its factories accept
+ordinary receiver callbacks such as Size2.() -> Arrangement.Vertical and
+Appearance2.(Boolean) -> Color. Private final implementations invoke callbacks with the
 current instance as this. Required methods need callbacks; shadowElevation and border
 accept nullable callbacks defaulting to null, which invokes the original interface body.
 A callback returning null still overrides border.
@@ -136,10 +94,10 @@ distinct instance equal to its source, with the same hash code.
 
 Preserved callbacks run with the new copy as this, so calls to other contract methods see
 the copy's overrides. Explicitly captured external objects keep their original references.
-For example, using V3 imports:
+For example, using V2 imports:
 
 ```kotlin
-val original = Appearance3(
+val original = Appearance2(
     shape = { RectangleShape },
     containerColor = { enabled -> if (enabled) Color.Red else Color.Gray },
     contentColor = { enabled -> containerColor(enabled) },
@@ -151,22 +109,40 @@ check(original.copy() == original)
 ```
 
 Manual implementations must supply their transferable callbacks through contract(); copy
-does not cast them to the private Impl. V3 follows the current factory/copy API without
+does not cast them to the private Impl. V2 follows the current factory/copy API without
 JvmOverloads or versioned ABI overloads. It has no wrapper receiver or rememberCopy helper.
 
-V3 presets use the same explicit tokens and five remember keys as V2. Callback captures
-contain only shape and the four resolved colors. A theme change produces a new preset;
-remember copies with their source as a key to pick up those new captures.
+Appearance2Presets.default resolves MaterialTheme.shapes.medium and four theme colors.
+The container uses surfaceContainerHighest. The disabled container composites surfaceVariant
+at alpha 0.38 over surfaceContainerHighest; disabled content also uses alpha 0.38.
+Content color is resolved from surfaceContainerHighest with ColorScheme.contentColorFor.
+The preset uses shape, containerColor, contentColor, disabledContainerColor, and disabledContentColor
+as remember keys. Callback captures contain only those individual values. A theme change
+produces a new preset; remember copies with their source as a key to pick up those new captures.
 
-## V2/V3 elevation
+Inside a MaterialTheme composition, using imports from
+`com.alexcawl.contract.benchmark.library.v2`:
 
-Appearance2/Appearance3.shadowElevation(enabled, interaction) returns a target Dp. A null interaction
+```kotlin
+val size = Size2Presets.default
+val original = Appearance2Presets.default
+val appearance = remember(original) {
+    original.copy(border = { BorderStroke(1.dp, Color.Blue) })
+}
+Card2(onClick = { /* caller-owned action */ }, size = size, appearance = appearance) {
+    Text("Arbitrary content")
+}
+```
+
+## V2 elevation
+
+Appearance2.shadowElevation(enabled, interaction) returns a target Dp. A null interaction
 means idle. Default targets are 0.dp when disabled, 1.dp for hover, 6.dp for drag, and 0.dp
 for idle, press, focus, or other interactions.
 
-The independent private helpers in Card2 and Card3 collect active press, hover, focus, and drag
-interactions. End and cancel events remove the matching start interaction. Each helper passes
-the latest active interaction, or null, to its Appearance and animates the returned target
+The private helper in Card2 collects active press, hover, focus, and drag
+interactions. End and cancel events remove the matching start interaction. The helper passes
+the latest active interaction, or null, to Appearance2 and animates the returned target
 with V1's timings and easing.
 Disabling snaps to the contract's returned target, including a custom nonzero disabled target.
 V1's shadowElevation(enabled, interactionSource) and its animation remain unchanged.
@@ -192,8 +168,6 @@ adb shell am force-stop com.alexcawl.contract.benchmark.app
 adb shell am start -W -n com.alexcawl.contract.benchmark.app/.v1.ActivityV1
 adb shell am force-stop com.alexcawl.contract.benchmark.app
 adb shell am start -W -n com.alexcawl.contract.benchmark.app/.v2.ActivityV2
-adb shell am force-stop com.alexcawl.contract.benchmark.app
-adb shell am start -W -n com.alexcawl.contract.benchmark.app/.v3.ActivityV3
 ```
 
 These adb timings are smoke checks, not substitutes for Macrobenchmark results.
@@ -213,7 +187,7 @@ verify that the measurement scenarios remain runnable.
 
 ## Microbenchmark: creation and copy
 
-Run all three version classes on a physical device:
+Run both version classes on a physical device:
 
 ```shell
 ./gradlew :benchmark:connectedReleaseAndroidTest
@@ -226,8 +200,8 @@ Select one version when needed:
   -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.V1ContractBenchmark
 ```
 
-Use V2ContractBenchmark or V3ContractBenchmark similarly. Each class has six cases: Size and
-Appearance, each with create, unchanged copy, and full copy (18 cases total):
+Use V2ContractBenchmark similarly. Each class has six cases: Size and
+Appearance, each with create, unchanged copy, and full copy (12 cases total):
 
 - `create`: direct factory invocation, including callback construction.
 - `copy`: unchanged copy using that version's default-copy implementation.
@@ -262,7 +236,7 @@ Each version retains three scenarios, each with ten iterations and CompilationMo
 
 Each iteration starts its Activity through an explicit Intent. Cold startup uses StartupMode.COLD;
 frame tests kill the target process and launch outside measured work. Resource tags and revision
-labels remain identical across the three private scenes for UI Automator synchronization.
+labels remain identical across the two private scenes for UI Automator synchronization.
 
 The app benchmark build is non-debuggable, profileable, unminified, debug-signed, and includes
 ProfileInstaller. The Macrobenchmark APK is a separate self-instrumenting process. Frame metrics
@@ -272,31 +246,43 @@ Full AOT and no R8 are controlled defaults, not predictions for every production
 
 ## Memory: heap dumps
 
-Capture all three version classes separately from timed benchmarks:
+Capture all four contract/version classes separately from timed benchmarks:
 
 ```shell
 ./gradlew :benchmark:connectedReleaseAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.V1ContractHeapDumpTest,com.alexcawl.contract.benchmark.test.v2.V2ContractHeapDumpTest,com.alexcawl.contract.benchmark.test.v3.V3ContractHeapDumpTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.V1SizeHeapDumpTest,com.alexcawl.contract.benchmark.test.v1.V1AppearanceHeapDumpTest,com.alexcawl.contract.benchmark.test.v2.V2SizeHeapDumpTest,com.alexcawl.contract.benchmark.test.v2.V2AppearanceHeapDumpTest \
   -Pandroid.testInstrumentationRunnerArguments.heapDump=true
 ```
 
-The class filter can select just one version. Each class produces eight named HPROF files:
-Size and Appearance, with create, copy, copyAll, and chain32 (24 files total). Chain32 performs
+Each class covers one contract and version, with four separate @Test methods:
+create, copy, copyAll, and chain32. There is no parameterized runner or operation dispatch.
+Without heapDump=true, @Before skips each method through assumeTrue before constructing samples.
+Each class produces four named HPROF files (16 files total), preserving names such as
+V1_Size_copyAll.hprof. Chain32 performs
 32 full copies, supplying every callback each time. Keep at least 2 GB free for a full run;
 these are full-process dumps rather than files containing only the sample.
+
+The class filter can select one contract/version, or one method:
+
+```shell
+./gradlew :benchmark:connectedReleaseAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.V1SizeHeapDumpTest#copyAll \
+  -Pandroid.testInstrumentationRunnerArguments.heapDump=true
+```
 
 Only the corresponding class's static current field holds the final contract. Construction
 returns before dumping, so earlier sources stay live only when the final contract references
 them. Each capture invokes GC and clears current in finally.
 
-Open a dump in Android Studio Profiler and inspect V1ContractHeapDumpTest.current,
-V2ContractHeapDumpTest.current, or V3ContractHeapDumpTest.current:
+Open a dump in Android Studio Profiler and inspect the corresponding static field:
+V1SizeHeapDumpTest.current, V1AppearanceHeapDumpTest.current, V2SizeHeapDumpTest.current,
+or V2AppearanceHeapDumpTest.current:
 
 - Shallow Size is the final contract object's own Java heap size.
 - Retained Size includes objects dominated by that contract: callbacks, wrappers, and source
   contracts without other live roots. Shared shapes and cached lambdas need not contribute.
 
-V3's temporary Contract snapshot may be collected before capture. Its allocation belongs in
+V2's temporary Contract snapshot may be collected before capture. Its allocation belongs in
 operation allocation counts, not live retained size. Results depend on ART, architecture, and
 callback captures; these samples do not measure the entire UI heap.
 

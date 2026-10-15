@@ -83,6 +83,6 @@ class ContractMacrobenchmark(private val version: Int) {
 
         @JvmStatic
         @Parameterized.Parameters(name = "V{0}")
-        fun versions(): List<Array<Int>> = (1..3).map { arrayOf(it) }
+        fun versions(): List<Array<Int>> = (1..2).map { arrayOf(it) }
     }
 }

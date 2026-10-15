@@ -156,7 +156,7 @@ private fun V1Scene() {
                 ) {
                     Text("Карточка $index", modifier = Modifier.padding(12.dp))
                     Text(
-                        "Одинаковая нагрузка для трёх контрактов",
+                        "Одинаковая нагрузка для двух контрактов",
                         modifier = Modifier.padding(horizontal = 12.dp),
                     )
                 }

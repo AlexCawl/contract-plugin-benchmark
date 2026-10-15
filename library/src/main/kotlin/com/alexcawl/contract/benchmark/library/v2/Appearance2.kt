@@ -36,6 +36,16 @@ interface Appearance2 {
     }
 
     fun border(): BorderStroke? = null
+
+    fun contract(): Contract
+
+    class Contract(
+        val shape: Appearance2.() -> Shape,
+        val containerColor: Appearance2.(enabled: Boolean) -> Color,
+        val contentColor: Appearance2.(enabled: Boolean) -> Color,
+        val shadowElevation: (Appearance2.(enabled: Boolean, interaction: Interaction?) -> Dp)? = null,
+        val border: (Appearance2.() -> BorderStroke?)? = null,
+    )
 }
 
 object Appearance2Presets {
@@ -43,9 +53,9 @@ object Appearance2Presets {
         @Composable
         get(): Appearance2 {
             val shape = MaterialTheme.shapes.medium
-            val containerColor =  MaterialTheme.colorScheme.surfaceContainerHighest
-            val contentColor =  MaterialTheme.colorScheme.contentColorFor(containerColor)
-            val disabledContainerColor =  MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f).compositeOver(containerColor)
+            val containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+            val contentColor = MaterialTheme.colorScheme.contentColorFor(containerColor)
+            val disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f).compositeOver(containerColor)
             val disabledContentColor = contentColor.copy(alpha = 0.38f)
             return remember(shape, containerColor, contentColor, disabledContainerColor, disabledContentColor) {
                 Appearance2(
@@ -62,35 +72,43 @@ object Appearance2Presets {
 }
 
 private class Appearance2Impl(
-    private val shape: () -> Shape,
-    private val containerColor: (enabled: Boolean) -> Color,
-    private val contentColor: (enabled: Boolean) -> Color,
-    private val shadowElevation: ((enabled: Boolean, interaction: Interaction?) -> Dp)?,
-    private val border: (() -> BorderStroke?)?,
+    private val shape: Appearance2.() -> Shape,
+    private val containerColor: Appearance2.(enabled: Boolean) -> Color,
+    private val contentColor: Appearance2.(enabled: Boolean) -> Color,
+    private val shadowElevation: (Appearance2.(enabled: Boolean, interaction: Interaction?) -> Dp)?,
+    private val border: (Appearance2.() -> BorderStroke?)?,
 ) : Appearance2 {
-    override fun shape(): Shape = shape.invoke()
+    override fun shape(): Shape = shape.invoke(this)
 
-    override fun containerColor(enabled: Boolean): Color = containerColor.invoke(enabled)
+    override fun containerColor(enabled: Boolean): Color = containerColor.invoke(this, enabled)
 
-    override fun contentColor(enabled: Boolean): Color = contentColor.invoke(enabled)
+    override fun contentColor(enabled: Boolean): Color = contentColor.invoke(this, enabled)
 
-    override fun shadowElevation(enabled: Boolean, interaction: Interaction?): Dp = if (shadowElevation != null) shadowElevation.invoke(enabled, interaction) else super.shadowElevation(enabled, interaction)
+    override fun shadowElevation(enabled: Boolean, interaction: Interaction?): Dp {
+        val callback = shadowElevation
+        return if (callback == null) {
+            super<Appearance2>.shadowElevation(enabled, interaction)
+        } else {
+            callback.invoke(this, enabled, interaction)
+        }
+    }
 
-    override fun border(): BorderStroke? = if (border != null) border.invoke() else super.border()
+    override fun border(): BorderStroke? {
+        val callback = border
+        return if (callback == null) super<Appearance2>.border() else callback.invoke(this)
+    }
+
+    override fun contract(): Appearance2.Contract =
+        Appearance2.Contract(shape, containerColor, contentColor, shadowElevation, border)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Appearance2Impl
-
-        if (shape != other.shape) return false
-        if (containerColor != other.containerColor) return false
-        if (contentColor != other.contentColor) return false
-        if (shadowElevation != other.shadowElevation) return false
-        if (border != other.border) return false
-
-        return true
+        if (other !is Appearance2Impl) return false
+        return shape == other.shape &&
+            containerColor == other.containerColor &&
+            contentColor == other.contentColor &&
+            shadowElevation == other.shadowElevation &&
+            border == other.border
     }
 
     override fun hashCode(): Int {
@@ -103,20 +121,27 @@ private class Appearance2Impl(
     }
 }
 
-@JvmOverloads
 fun Appearance2(
-    shape: () -> Shape,
-    containerColor: (enabled: Boolean) -> Color,
-    contentColor: (enabled: Boolean) -> Color,
-    shadowElevation: ((enabled: Boolean, interaction: Interaction?) -> Dp)? = null,
-    border: (() -> BorderStroke?)? = null,
+    shape: Appearance2.() -> Shape,
+    containerColor: Appearance2.(enabled: Boolean) -> Color,
+    contentColor: Appearance2.(enabled: Boolean) -> Color,
+    shadowElevation: (Appearance2.(enabled: Boolean, interaction: Interaction?) -> Dp)? = null,
+    border: (Appearance2.() -> BorderStroke?)? = null,
 ): Appearance2 = Appearance2Impl(shape, containerColor, contentColor, shadowElevation, border)
 
-@JvmOverloads
 fun Appearance2.copy(
-    shape: () -> Shape = this::shape,
-    containerColor: (enabled: Boolean) -> Color = this::containerColor,
-    contentColor: (enabled: Boolean) -> Color = this::contentColor,
-    shadowElevation: (enabled: Boolean, interaction: Interaction?) -> Dp = this::shadowElevation,
-    border: () -> BorderStroke? = this::border,
-): Appearance2 = Appearance2Impl(shape, containerColor, contentColor, shadowElevation, border)
+    shape: (Appearance2.() -> Shape)? = null,
+    containerColor: (Appearance2.(enabled: Boolean) -> Color)? = null,
+    contentColor: (Appearance2.(enabled: Boolean) -> Color)? = null,
+    shadowElevation: (Appearance2.(enabled: Boolean, interaction: Interaction?) -> Dp)? = null,
+    border: (Appearance2.() -> BorderStroke?)? = null,
+): Appearance2 {
+    val original = contract()
+    return Appearance2(
+        shape = shape ?: original.shape,
+        containerColor = containerColor ?: original.containerColor,
+        contentColor = contentColor ?: original.contentColor,
+        shadowElevation = shadowElevation ?: original.shadowElevation,
+        border = border ?: original.border,
+    )
+}

@@ -19,31 +19,33 @@ class V1ContractBenchmark {
     @get:Rule
     val benchmarkRule = BenchmarkRule()
 
-    private val size = run {
-        val contentArrangement: Arrangement.Vertical = Arrangement.Top
-        val contentAlignment: Alignment.Horizontal = Alignment.Start
-        Size1(
-            contentArrangement = { contentArrangement },
-            contentAlignment = { contentAlignment },
-        )
-    }
+    private val size: Size1
+        get() {
+            val contentArrangement: Arrangement.Vertical = Arrangement.Top
+            val contentAlignment: Alignment.Horizontal = Alignment.Start
+            return Size1(
+                contentArrangement = { contentArrangement },
+                contentAlignment = { contentAlignment },
+            )
+        }
 
-    private val appearance = run {
-        val shape = RoundedCornerShape(12.dp)
-        val containerColor = Color(0xFFE8DEF8)
-        val contentColor = Color(0xFF1D192B)
-        val disabledContainerColor = Color(0xFFE0E0E0)
-        val disabledContentColor = Color(0xFF757575)
-        val shadowElevation = 0.dp
-        val border: BorderStroke? = null
-        Appearance1(
-            shape = { shape },
-            containerColor = { enabled -> if (enabled) containerColor else disabledContainerColor },
-            contentColor = { enabled -> if (enabled) contentColor else disabledContentColor },
-            shadowElevation = { enabled, _ -> if (enabled) shadowElevation else 0.dp },
-            border = { border },
-        )
-    }
+    private val appearance: Appearance1
+        get() {
+            val shape = RoundedCornerShape(12.dp)
+            val containerColor = Color(0xFFE8DEF8)
+            val contentColor = Color(0xFF1D192B)
+            val disabledContainerColor = Color(0xFFE0E0E0)
+            val disabledContentColor = Color(0xFF757575)
+            val shadowElevation = 0.dp
+            val border: BorderStroke? = null
+            return Appearance1(
+                shape = { shape },
+                containerColor = { enabled -> if (enabled) containerColor else disabledContainerColor },
+                contentColor = { enabled -> if (enabled) contentColor else disabledContentColor },
+                shadowElevation = { enabled, _ -> if (enabled) shadowElevation else 0.dp },
+                border = { border },
+            )
+        }
 
     @Test
     fun size_create() {

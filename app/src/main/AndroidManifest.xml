@@ -10,6 +10,5 @@
             </intent-filter>
         </activity>
         <activity android:name=".v2.ActivityV2" android:exported="true" />
-        <activity android:name=".v3.ActivityV3" android:exported="true" />
     </application>
 </manifest>

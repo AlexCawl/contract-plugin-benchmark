@@ -11,6 +11,13 @@ interface Size2 {
     fun contentArrangement(): Arrangement.Vertical
 
     fun contentAlignment(): Alignment.Horizontal
+
+    fun contract(): Contract
+
+    class Contract(
+        val contentArrangement: Size2.() -> Arrangement.Vertical,
+        val contentAlignment: Size2.() -> Alignment.Horizontal,
+    )
 }
 
 object Size2Presets {
@@ -24,40 +31,37 @@ object Size2Presets {
         }
 }
 
-class Size2Impl(
-    private val contentArrangement: () -> Arrangement.Vertical,
-    private val contentAlignment: () -> Alignment.Horizontal,
+private class Size2Impl(
+    private val contentArrangement: Size2.() -> Arrangement.Vertical,
+    private val contentAlignment: Size2.() -> Alignment.Horizontal,
 ) : Size2 {
-    override fun contentArrangement(): Arrangement.Vertical = contentArrangement.invoke()
+    override fun contentArrangement(): Arrangement.Vertical = contentArrangement.invoke(this)
 
-    override fun contentAlignment(): Alignment.Horizontal = contentAlignment.invoke()
+    override fun contentAlignment(): Alignment.Horizontal = contentAlignment.invoke(this)
+
+    override fun contract(): Size2.Contract = Size2.Contract(contentArrangement, contentAlignment)
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Size2Impl
-
-        if (contentArrangement != other.contentArrangement) return false
-        if (contentAlignment != other.contentAlignment) return false
-
-        return true
+        if (other !is Size2Impl) return false
+        return contentArrangement == other.contentArrangement && contentAlignment == other.contentAlignment
     }
 
-    override fun hashCode(): Int {
-        var result = contentArrangement.hashCode()
-        result = 31 * result + contentAlignment.hashCode()
-        return result
-    }
+    override fun hashCode(): Int = 31 * contentArrangement.hashCode() + contentAlignment.hashCode()
 }
 
-@JvmOverloads
 fun Size2(
-    contentArrangement: () -> Arrangement.Vertical,
-    contentAlignment: () -> Alignment.Horizontal,
+    contentArrangement: Size2.() -> Arrangement.Vertical,
+    contentAlignment: Size2.() -> Alignment.Horizontal,
 ): Size2 = Size2Impl(contentArrangement, contentAlignment)
 
-@JvmOverloads
 fun Size2.copy(
-    contentArrangement: () -> Arrangement.Vertical = this::contentArrangement,
-    contentAlignment: () -> Alignment.Horizontal = this::contentAlignment,
-): Size2 = Size2Impl(contentArrangement, contentAlignment)
+    contentArrangement: (Size2.() -> Arrangement.Vertical)? = null,
+    contentAlignment: (Size2.() -> Alignment.Horizontal)? = null,
+): Size2 {
+    val original = contract()
+    return Size2(
+        contentArrangement = contentArrangement ?: original.contentArrangement,
+        contentAlignment = contentAlignment ?: original.contentAlignment,
+    )
+}
