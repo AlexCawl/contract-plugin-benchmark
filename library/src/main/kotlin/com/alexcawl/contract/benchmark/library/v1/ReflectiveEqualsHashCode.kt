@@ -8,10 +8,6 @@ import java.lang.Short
 import java.lang.reflect.Field
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * V1 equality compares the captured fields of anonymous implementations of the same class.
- * The original algorithm is preserved, including treating two null reference fields as unequal.
- */
 abstract class ReflectiveEqualsHashCode {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

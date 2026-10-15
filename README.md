@@ -10,19 +10,25 @@ artifacts, or another checkout. Only the standard Kotlin Compose compiler is ena
 ## Modules and application
 
 - `library`: contracts in library.v1/v2 and the original Card implementations. Exports Material3.
-- `app`: ActivityV1 and ActivityV2. Each scene is a private composable in its
+- `app`: Activity1 and Activity2. Each scene is a private composable in its
   Activity file, called only by that Activity. V1 is the launcher; start V2 directly.
-- `benchmark`: separate V1ContractBenchmark/V2ContractBenchmark and
-  V1SizeHeapDumpTest/V1AppearanceHeapDumpTest/V2SizeHeapDumpTest/V2AppearanceHeapDumpTest classes.
-- `macrobenchmark`: self-instrumenting com.android.test module targeting app's benchmark build.
+- `benchmark`: separate Size1Benchmark/Appearance1Benchmark/Size2Benchmark/Appearance2Benchmark and
+  Size1HeapDumpTest/Appearance1HeapDumpTest/Size2HeapDumpTest/Appearance2HeapDumpTest classes.
+- `macrobenchmark`: self-instrumenting com.android.test module targeting app's benchmark build,
+  with separate Activity1Macrobenchmark and Activity2Macrobenchmark classes.
 
-There are no shared scenes, factory wrappers, input-holder types, or contract correctness tests.
-Scenes and benchmarks call the versioned factories and copy extensions directly, with identical
-tokens and content repeated explicitly. The library contains only contracts and Card renderers.
+There are no shared scenes, input-holder types, or contract correctness tests. Private inline
+appearance/size helpers with value defaults prepare Microbenchmark source contracts outside timed work
+and create contracts inside create measurements with explicit precomputed arguments.
+Scenes use their version's Presets.default as copy sources; object benchmarks use the versioned
+factories and copy extensions. Tokens and content are repeated explicitly. The library contains
+contracts, their presets, and Card renderers.
 
 Each Activity hosts 1000 identically sized cards in a LazyColumn. Visible/prefetched items
-remember their own Size and Appearance copies from that Activity's base contracts by base
-and revision. Both copy calls supply every callback. Scrolling away can dispose copies;
+remember their own Size and Appearance copies from their version's Presets.default, keyed by
+the default contract and revision. Private composable rememberSize1/2 and rememberAppearance1/2
+helpers in each Activity file build those copies inside each item; shared token calculation
+stays in the Scene. Both copy calls supply every callback. Scrolling away can dispose copies;
 this is not 1000 eagerly retained contracts.
 
 The appearance button alternates the same colors, shape, border, arrangement, and alignment
@@ -165,9 +171,9 @@ Install the app and start each screen independently:
 ```shell
 ./gradlew :app:installDebug
 adb shell am force-stop com.alexcawl.contract.benchmark.app
-adb shell am start -W -n com.alexcawl.contract.benchmark.app/.v1.ActivityV1
+adb shell am start -W -n com.alexcawl.contract.benchmark.app/.v1.Activity1
 adb shell am force-stop com.alexcawl.contract.benchmark.app
-adb shell am start -W -n com.alexcawl.contract.benchmark.app/.v2.ActivityV2
+adb shell am start -W -n com.alexcawl.contract.benchmark.app/.v2.Activity2
 ```
 
 These adb timings are smoke checks, not substitutes for Macrobenchmark results.
@@ -187,29 +193,30 @@ verify that the measurement scenarios remain runnable.
 
 ## Microbenchmark: creation and copy
 
-Run both version classes on a physical device:
+Run all four contract/version classes on a physical device:
 
 ```shell
 ./gradlew :benchmark:connectedReleaseAndroidTest
 ```
 
-Select one version when needed:
+Select one contract/version when needed:
 
 ```shell
 ./gradlew :benchmark:connectedReleaseAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.V1ContractBenchmark
+  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.Size1Benchmark
 ```
 
-Use V2ContractBenchmark similarly. Each class has six cases: Size and
-Appearance, each with create, unchanged copy, and full copy (12 cases total):
+Select Appearance1Benchmark, Size2Benchmark, or Appearance2Benchmark similarly.
+Each class covers one contract and version, with three @Test methods (12 cases total):
 
-- `create`: direct factory invocation, including callback construction.
+- `create`: factory invocation through the inline appearance/size helper, including callback construction.
 - `copy`: unchanged copy using that version's default-copy implementation.
 - `copyAll`: direct copy with every callback replaced. Size supplies contentArrangement and
   contentAlignment; Appearance supplies shape, containerColor, contentColor, shadowElevation, and border.
 
-Tokens and source contracts are prepared outside timed work. Factories/copy are called directly
-inside measured blocks. Their callbacks capture local token values, not the benchmark instance.
+Tokens and source contracts are prepared outside timed work. Creation helpers are inlined into
+measured blocks with all token arguments passed explicitly; copy extensions are called directly.
+Their callbacks capture local token values, not the benchmark instance.
 BlackHole consumes the result so it cannot be discarded as unused.
 
 AndroidX warms up and reports timeNs and allocationCount. Allocations are counts of allocated
@@ -228,11 +235,23 @@ Run on a physical device with API 31 or later:
 ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest
 ```
 
-Each version retains three scenarios, each with ten iterations and CompilationMode.Full():
+Activity1Macrobenchmark targets Activity1; Activity2Macrobenchmark targets Activity2.
+Both are ordinary JUnit 4 classes. Each has three scenarios (six total), with ten iterations
+and CompilationMode.Full():
 
 - `coldStartup`: StartupTimingMetric, including initial display and ReportDrawn completion.
 - `scroll`: FrameTimingMetric over five forward and five backward flings at the same speed.
 - `copyAllUpdates`: FrameTimingMetric over ten appearance changes, rebuilding visible copies.
+
+Select one Activity's class, or one scenario through ClassName#method:
+
+```shell
+./gradlew :macrobenchmark:connectedBenchmarkAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.macro.Activity1Macrobenchmark
+
+./gradlew :macrobenchmark:connectedBenchmarkAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.macro.Activity2Macrobenchmark#scroll
+```
 
 Each iteration starts its Activity through an explicit Intent. Cold startup uses StartupMode.COLD;
 frame tests kill the target process and launch outside measured work. Resource tags and revision
@@ -250,12 +269,14 @@ Capture all four contract/version classes separately from timed benchmarks:
 
 ```shell
 ./gradlew :benchmark:connectedReleaseAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.V1SizeHeapDumpTest,com.alexcawl.contract.benchmark.test.v1.V1AppearanceHeapDumpTest,com.alexcawl.contract.benchmark.test.v2.V2SizeHeapDumpTest,com.alexcawl.contract.benchmark.test.v2.V2AppearanceHeapDumpTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.Size1HeapDumpTest,com.alexcawl.contract.benchmark.test.v1.Appearance1HeapDumpTest,com.alexcawl.contract.benchmark.test.v2.Size2HeapDumpTest,com.alexcawl.contract.benchmark.test.v2.Appearance2HeapDumpTest \
   -Pandroid.testInstrumentationRunnerArguments.heapDump=true
 ```
 
 Each class covers one contract and version, with four separate @Test methods:
 create, copy, copyAll, and chain32. There is no parameterized runner or operation dispatch.
+Each class has one private inline appearance/size factory with value defaults; copy and chain
+operations live directly in their @Test methods.
 Without heapDump=true, @Before skips each method through assumeTrue before constructing samples.
 Each class produces four named HPROF files (16 files total), preserving names such as
 V1_Size_copyAll.hprof. Chain32 performs
@@ -266,17 +287,21 @@ The class filter can select one contract/version, or one method:
 
 ```shell
 ./gradlew :benchmark:connectedReleaseAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.V1SizeHeapDumpTest#copyAll \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.alexcawl.contract.benchmark.test.v1.Size1HeapDumpTest#copyAll \
   -Pandroid.testInstrumentationRunnerArguments.heapDump=true
 ```
 
-Only the corresponding class's static current field holds the final contract. Construction
-returns before dumping, so earlier sources stay live only when the final contract references
-them. Each capture invokes GC and clears current in finally.
+Only the corresponding class's static current field holds the final contract. The @After hook
+dumps after the test method returns, so construction locals cannot root earlier sources.
+Earlier sources stay live only when the final contract references them. The hook skips dumping
+when current is null, including tests skipped by @Before. The ordinary internal dumpHeap(fileName)
+function in HeapDumpUtils.kt handles the output directory, GC, HPROF capture, validation, and
+instrumentation status. Each hook passes only the file name and clears current in finally,
+including when capture fails.
 
 Open a dump in Android Studio Profiler and inspect the corresponding static field:
-V1SizeHeapDumpTest.current, V1AppearanceHeapDumpTest.current, V2SizeHeapDumpTest.current,
-or V2AppearanceHeapDumpTest.current:
+Size1HeapDumpTest.current, Appearance1HeapDumpTest.current, Size2HeapDumpTest.current,
+or Appearance2HeapDumpTest.current:
 
 - Shallow Size is the final contract object's own Java heap size.
 - Retained Size includes objects dominated by that contract: callbacks, wrappers, and source

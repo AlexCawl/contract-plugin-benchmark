@@ -52,7 +52,6 @@ fun Card2(
     }
 }
 
-/** Filled Card elevation transitions from Material3 1.4.0, matching V1. */
 @Composable
 private fun Appearance2.animatedShadowElevation(
     enabled: Boolean,

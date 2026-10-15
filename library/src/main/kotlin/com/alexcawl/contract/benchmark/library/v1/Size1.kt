@@ -17,18 +17,6 @@ interface Size1 {
     fun contentAlignment(): Alignment.Horizontal
 }
 
-object Size1Presets {
-
-    val default: Size1
-        @Composable
-        get() = remember {
-            Size1(
-                contentArrangement = { Arrangement.Top },
-                contentAlignment = { Alignment.Start },
-            )
-        }
-}
-
 inline fun Size1(
     crossinline contentArrangement: @Composable Size1.() -> Arrangement.Vertical,
     crossinline contentAlignment: @Composable Size1.() -> Alignment.Horizontal,

@@ -2,13 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
-            android:name=".v1.ActivityV1"
+            android:name=".v1.Activity1"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".v2.ActivityV2" android:exported="true" />
+        <activity android:name=".v2.Activity2" android:exported="true" />
     </application>
 </manifest>

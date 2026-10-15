@@ -13,16 +13,13 @@ import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.Until
 import org.junit.Rule
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.Parameterized
 
-@RunWith(Parameterized::class)
-class ContractMacrobenchmark(private val version: Int) {
+class Activity2Macrobenchmark {
     @get:Rule
     val benchmarkRule = MacrobenchmarkRule()
 
     private fun activityIntent() = Intent().apply {
-        component = ComponentName(PACKAGE_NAME, "$PACKAGE_NAME.v${version}.ActivityV$version")
+        component = ComponentName(PACKAGE_NAME, "$PACKAGE_NAME.v2.Activity2")
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
     }
 
@@ -80,9 +77,5 @@ class ContractMacrobenchmark(private val version: Int) {
 
     companion object {
         private const val PACKAGE_NAME = "com.alexcawl.contract.benchmark.app"
-
-        @JvmStatic
-        @Parameterized.Parameters(name = "V{0}")
-        fun versions(): List<Array<Int>> = (1..2).map { arrayOf(it) }
     }
 }
